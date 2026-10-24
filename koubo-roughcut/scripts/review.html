@@ -4,8 +4,16 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>口播审片</title>
+  <script>
+    try {
+      const savedTheme = localStorage.getItem("koubo-review-theme");
+      document.documentElement.dataset.theme = savedTheme === "light" ? "light" : "dark";
+    } catch (_) {
+      document.documentElement.dataset.theme = "dark";
+    }
+  </script>
   <style>
-    :root {
+    :root, :root[data-theme="dark"] {
       --bg: #151517;
       --panel: #1d1d22;
       --line: #2c2c34;
@@ -14,21 +22,82 @@
       --keep: #3dba84;
       --drop: #c45c4a;
       --accent: #e8d5a3;
+      --accent-contrast: #1a1408;
       --sel: #3a5a8c;
+      --selection-text: #ffffff;
+      --button-bg: #2a2a31;
+      --button-hover-line: #5a5a64;
+      --button-pressed-bg: #3a3426;
+      --input-bg: #121216;
+      --word-hover-bg: #2a2a33;
+      --struck-text: #6f6f68;
+      --heard-text: #5d5d58;
+      --gap-kept-bg: #3a3a40;
+      --gap-kept-text: #bdbdb6;
+      --kbd-bg: #222228;
+      --preview-bg: #0c0c0e;
+      --timeline-bg: #101013;
+      --progress-bg: #2a2a31;
+      --marquee-bg: rgba(232, 213, 163, 0.12);
+      --wave-bg: #101013;
+      --wave-kept-strip: rgba(61, 186, 132, 0.55);
+      --wave-drop-strip: rgba(196, 92, 74, 0.6);
+      --wave-grid: #55555e;
+      --wave-kept: rgba(61, 186, 132, 0.9);
+      --wave-muted: rgba(120, 120, 128, 0.45);
+      --wave-marker: rgba(232, 213, 163, 0.18);
+      --wave-selected-marker: rgba(232, 213, 163, 0.9);
+      --wave-playhead: #fff;
+    }
+    :root[data-theme="light"] {
+      --bg: #f5f7fa;
+      --panel: #ffffff;
+      --line: #cbd2dc;
+      --text: #172033;
+      --muted: #556070;
+      --keep: #147a52;
+      --drop: #b42318;
+      --accent: #966817;
+      --accent-contrast: #ffffff;
+      --sel: #1f5fae;
+      --selection-text: #ffffff;
+      --button-bg: #ffffff;
+      --button-hover-line: #68758a;
+      --button-pressed-bg: #edf1f5;
+      --input-bg: #ffffff;
+      --word-hover-bg: #e7edf5;
+      --struck-text: #727d8d;
+      --heard-text: #647084;
+      --gap-kept-bg: #e4eaf1;
+      --gap-kept-text: #42516a;
+      --kbd-bg: #edf1f5;
+      --preview-bg: #f0f3f7;
+      --timeline-bg: #edf1f5;
+      --progress-bg: #dce3eb;
+      --marquee-bg: rgba(150, 104, 23, 0.14);
+      --wave-bg: #edf1f5;
+      --wave-kept-strip: rgba(20, 122, 82, 0.6);
+      --wave-drop-strip: rgba(180, 35, 24, 0.62);
+      --wave-grid: #667085;
+      --wave-kept: rgba(20, 122, 82, 0.88);
+      --wave-muted: rgba(99, 115, 129, 0.5);
+      --wave-marker: rgba(150, 104, 23, 0.2);
+      --wave-selected-marker: rgba(150, 104, 23, 0.92);
+      --wave-playhead: #172033;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font: 14px/1.5 ui-sans-serif, system-ui, sans-serif; }
-    button { font: inherit; color: inherit; background: #2a2a31; border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
-    button:hover { border-color: #5a5a64; }
-    button.primary { background: var(--accent); color: #1a1408; border-color: var(--accent); font-weight: 600; }
-    button[aria-pressed="true"] { background: #3a3426; border-color: var(--accent); }
+    button { font: inherit; color: inherit; background: var(--button-bg); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; cursor: pointer; }
+    button:hover { border-color: var(--button-hover-line); }
+    button.primary { background: var(--accent); color: var(--accent-contrast); border-color: var(--accent); font-weight: 600; }
+    button[aria-pressed="true"] { background: var(--button-pressed-bg); border-color: var(--accent); }
     button:disabled { opacity: 0.45; cursor: default; }
-    input[type="number"] { width: 7rem; background: #121216; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; color: inherit; font: inherit; }
-    select { background: #121216; border: 1px solid var(--line); border-radius: 6px; padding: 4px; color: inherit; font: inherit; }
+    input[type="number"] { width: 7rem; background: var(--input-bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; color: inherit; font: inherit; }
+    select { background: var(--input-bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px; color: inherit; font: inherit; }
     .rate-label { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
-    select.play-rate { background: #2a2a31; padding: 5px 8px; cursor: pointer; }
-    select.play-rate:hover { border-color: #5a5a64; }
-    select.play-rate.fast { background: #3a3426; border-color: var(--accent); color: var(--text); }
+    select.play-rate { background: var(--button-bg); padding: 5px 8px; cursor: pointer; }
+    select.play-rate:hover { border-color: var(--button-hover-line); }
+    select.play-rate.fast { background: var(--button-pressed-bg); border-color: var(--accent); color: var(--text); }
     .app { display: grid; grid-template-rows: auto 1fr 164px; height: 100%; }
     header { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
     header h1 { font-size: 14px; font-weight: 600; margin: 0; flex: none; white-space: nowrap; }
@@ -48,18 +117,18 @@
     .ptime:hover { color: var(--accent); }
     .pbody { line-height: 1.95; font-size: 15px; }
     .w { cursor: pointer; border-radius: 3px; }
-    .w:hover { background: #2a2a33; }
-    .w.drop { color: #6f6f68; text-decoration: line-through; text-decoration-color: var(--drop); text-decoration-thickness: 1.5px; }
-    .w.cur { background: #3a3426; color: var(--accent); }
-    .w.sel { background: var(--sel); color: #fff; }
+    .w:hover { background: var(--word-hover-bg); }
+    .w.drop { color: var(--struck-text); text-decoration: line-through; text-decoration-color: var(--drop); text-decoration-thickness: 1.5px; }
+    .w.cur { background: var(--button-pressed-bg); color: var(--accent); }
+    .w.sel { background: var(--sel); color: var(--selection-text); }
     .gap { display: inline; margin: 0 1px; padding: 0 3px; border-radius: 3px; font-size: 12px; font-variant-numeric: tabular-nums; cursor: pointer; }
-    .gap.cut { color: #6f6f68; text-decoration: line-through; text-decoration-color: var(--drop); text-decoration-thickness: 1.5px; }
-    .gap.kept { background: #3a3a40; color: #bdbdb6; text-decoration: none; }
+    .gap.cut { color: var(--struck-text); text-decoration: line-through; text-decoration-color: var(--drop); text-decoration-thickness: 1.5px; }
+    .gap.kept { background: var(--gap-kept-bg); color: var(--gap-kept-text); text-decoration: none; }
     .gap.cur, .gap.sel { outline: 1px solid var(--accent); }
     .transcript.selecting { cursor: text; }
     .tx-hint { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; padding: 8px 20px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
-    .tx-hint kbd { display: inline-block; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); background: #222228; color: var(--text); font-size: 11px; }
-    .preview { display: flex; flex-direction: column; min-height: 0; min-width: 280px; flex: 1 1 auto; background: #0c0c0e; }
+    .tx-hint kbd { display: inline-block; padding: 1px 6px; border-radius: 4px; border: 1px solid var(--line); background: var(--kbd-bg); color: var(--text); font-size: 11px; }
+    .preview { display: flex; flex-direction: column; min-height: 0; min-width: 280px; flex: 1 1 auto; background: var(--preview-bg); }
     .player { padding: 12px 14px 8px; }
     video, audio { width: 100%; max-height: 46vh; background: #000; border-radius: 8px; }
     .editor { flex: 1; overflow: auto; padding: 10px 14px; border-top: 1px solid var(--line); background: var(--panel); }
@@ -69,8 +138,8 @@
     .editor .actions { display: flex; gap: 8px; margin-top: 8px; }
     .flags .flag { cursor: pointer; color: var(--muted); font-size: 12px; padding: 3px 0; font-variant-numeric: tabular-nums; }
     .flags .flag:hover { color: var(--accent); }
-    .flags .flag.heard { color: #5d5d58; }
-    .timeline { position: relative; border-top: 1px solid var(--line); background: #101013; display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
+    .flags .flag.heard { color: var(--heard-text); }
+    .timeline { position: relative; border-top: 1px solid var(--line); background: var(--timeline-bg); display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
     .tl-resizer { position: absolute; top: -3px; left: 0; right: 0; height: 6px; cursor: row-resize; z-index: 3; }
     #wave { flex: 1; min-height: 0; width: 100%; cursor: crosshair; touch-action: none; display: block; }
     .clock { display: flex; gap: 16px; align-items: center; padding: 4px 14px; color: var(--muted); font-variant-numeric: tabular-nums; font-size: 11px; }
@@ -81,14 +150,14 @@
     .status { min-width: 0; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .export-progress { display: flex; align-items: center; }
     .export-progress[hidden] { display: none; }
-    .export-progress-track { width: 148px; height: 6px; border-radius: 99px; background: #2a2a31; overflow: hidden; }
+    .export-progress-track { width: 148px; height: 6px; border-radius: 99px; background: var(--progress-bg); overflow: hidden; }
     .export-progress-track > span { display: block; height: 100%; width: 0%; background: var(--accent); border-radius: 99px; }
     .export-progress.indeterminate .export-progress-track > span { width: 36%; animation: export-slide 1.1s ease-in-out infinite; }
     @keyframes export-slide { from { transform: translateX(-120%); } to { transform: translateX(340%); } }
     .status.ok { color: var(--keep); }
     .status.err { color: var(--drop); }
     .empty { padding: 24px; color: var(--muted); }
-    #marquee { display: none; position: fixed; z-index: 8; pointer-events: none; border: 1px solid var(--accent); background: rgba(232, 213, 163, 0.12); border-radius: 2px; }
+    #marquee { display: none; position: fixed; z-index: 8; pointer-events: none; border: 1px solid var(--accent); background: var(--marquee-bg); border-radius: 2px; }
   </style>
 </head>
 <body>
@@ -98,6 +167,7 @@
       <h1>口播审片</h1>
       <span class="stats" id="stats"></span>
       <div class="spacer"></div>
+      <button type="button" id="themeToggle" aria-pressed="false">主题：深色</button>
       <label class="rate-label" for="playRate">倍速
         <select id="playRate" class="play-rate" title="播放倍速">
           <option value="1">1.0×</option>
@@ -162,6 +232,7 @@
     let media = null;
     let wave = null;
     let waveMax = 1;
+    let waveTheme = {};
     let words = []; // {w, s, e, seg, el}
     let gaps = []; // {start, end, el}
     let cutMode = true;
@@ -861,6 +932,14 @@
       return Math.max(0, Math.min(duration(), s + (x / W) * (e - s)));
     }
 
+    function syncWaveTheme() {
+      const styles = getComputedStyle(document.documentElement);
+      for (const name of [
+        "--wave-bg", "--wave-kept-strip", "--wave-drop-strip", "--wave-grid",
+        "--wave-kept", "--wave-muted", "--wave-marker", "--wave-selected-marker", "--wave-playhead",
+      ]) waveTheme[name] = styles.getPropertyValue(name).trim();
+    }
+
     function drawWave() {
       const cv = $("wave");
       const dpr = window.devicePixelRatio || 1;
@@ -869,7 +948,7 @@
       if (cv.width !== W * dpr || cv.height !== H * dpr) { cv.width = W * dpr; cv.height = H * dpr; }
       const ctx = cv.getContext("2d");
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.fillStyle = "#101013";
+      ctx.fillStyle = waveTheme["--wave-bg"] || "#101013";
       ctx.fillRect(0, 0, W, H);
       const dur = duration() || 1;
       const [vs, ve] = viewRange();
@@ -887,10 +966,10 @@
       }
       const stripH = 5;
       for (let x = 0; x < W; x++) {
-        ctx.fillStyle = keptMask[x] ? "rgba(61,186,132,0.55)" : "rgba(196,92,74,0.6)";
+        ctx.fillStyle = keptMask[x] ? waveTheme["--wave-kept-strip"] : waveTheme["--wave-drop-strip"];
         ctx.fillRect(x, 0, 1, stripH);
       }
-      ctx.fillStyle = "#55555e";
+      ctx.fillStyle = waveTheme["--wave-grid"];
       ctx.font = "10px ui-sans-serif, system-ui, sans-serif";
       const step = niceStep(len);
       for (let t = Math.ceil(vs / step) * step; t <= ve + EPS; t += step) {
@@ -910,12 +989,12 @@
           let p = 0;
           for (let i = i0; i < i1; i++) if (wave.peaks[i] > p) p = wave.peaks[i];
           const h = Math.max(1, Math.pow(p / waveMax, 0.7) * maxH);
-          ctx.fillStyle = keptMask[x] ? "rgba(61,186,132,0.9)" : "rgba(120,120,128,0.45)";
+          ctx.fillStyle = keptMask[x] ? waveTheme["--wave-kept"] : waveTheme["--wave-muted"];
           ctx.fillRect(x, midY - h, 1, h * 2);
         }
       }
       if (hasDec) {
-        ctx.fillStyle = "rgba(232,213,163,0.18)";
+        ctx.fillStyle = waveTheme["--wave-marker"];
         for (const k of keeps()) {
           const xa = tToX(k.sourceStart, W), xb = tToX(k.sourceEnd, W);
           if (xa >= -2 && xa <= W + 2) ctx.fillRect(xa, stripH, 1, H - stripH);
@@ -923,7 +1002,7 @@
         }
         const sel = selected?.kind === "keep" ? currentItem() : null;
         if (sel) {
-          ctx.fillStyle = "rgba(232,213,163,0.9)";
+          ctx.fillStyle = waveTheme["--wave-selected-marker"];
           ctx.fillRect(tToX(sel.sourceStart, W) - 1, 0, 3, H);
           ctx.fillRect(tToX(sel.sourceEnd, W) - 1, 0, 3, H);
         }
@@ -931,7 +1010,7 @@
       if (media) {
         const x = tToX(media.currentTime, W);
         if (x >= -1 && x <= W + 1) {
-          ctx.fillStyle = "#fff";
+          ctx.fillStyle = waveTheme["--wave-playhead"];
           ctx.fillRect(x - 0.5, 0, 1.5, H);
         }
       }
@@ -1113,6 +1192,38 @@
     const PLAY_RATES = [1, 1.1, 1.2, 1.3];
     const RATE_KEY = "koubo-review-rate";
     const SPLIT_KEY = "koubo-review-tx-width";
+    const DARK_THEME = "dark";
+    const LIGHT_THEME = "light";
+    const THEMES = [DARK_THEME, LIGHT_THEME];
+    const THEME_KEY = "koubo-review-theme";
+    let theme = validTheme(document.documentElement.dataset.theme);
+
+    function validTheme(value) {
+      return THEMES.includes(value) ? value : DARK_THEME;
+    }
+
+    function updateThemeControl() {
+      const button = $("themeToggle");
+      if (!button) return;
+      const light = theme === LIGHT_THEME;
+      const current = light ? "浅色" : "深色";
+      const next = light ? "深色" : "浅色";
+      button.textContent = "主题：" + current;
+      button.title = "切换到" + next + "主题";
+      button.setAttribute("aria-pressed", String(light));
+      button.setAttribute("aria-label", "当前为" + current + "主题；切换到" + next + "主题");
+    }
+
+    function applyTheme(value, persist) {
+      theme = validTheme(value);
+      document.documentElement.dataset.theme = theme;
+      updateThemeControl();
+      syncWaveTheme();
+      drawWave();
+      if (persist) {
+        try { localStorage.setItem(THEME_KEY, theme); } catch (_) { /* ignore */ }
+      }
+    }
 
     function currentRate() {
       const n = Number($("playRate").value);
@@ -1594,6 +1705,7 @@
       applyPlayRate();
       try { localStorage.setItem(RATE_KEY, String(currentRate())); } catch (_) { /* ignore */ }
     };
+    $("themeToggle").onclick = () => applyTheme(theme === DARK_THEME ? LIGHT_THEME : DARK_THEME, true);
     $("save").onclick = save;
     $("exportXml").onclick = () => exportFile("fcpxml");
     $("exportSrt").onclick = () => exportFile("srt");
@@ -1628,6 +1740,7 @@
 
     /* ---------- init ---------- */
 
+    applyTheme(theme, false);
     try {
       const savedRate = localStorage.getItem(RATE_KEY);
       if (savedRate && $("playRate").querySelector(`option[value="${savedRate}"]`)) $("playRate").value = savedRate;

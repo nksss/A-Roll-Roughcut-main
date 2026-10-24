@@ -216,3 +216,16 @@ test("review panel applies the cut plan every frame and shows silence cuts", () 
   assert.match(html, /applyMixedSelection\(/);
   assert.doesNotMatch(html, /hit\.inDrop && hit\.next/);
 });
+
+test("review panel declares validated persisted light and dark theme choices", () => {
+  const html = fs.readFileSync(path.join(__dirname, "review.html"), "utf8");
+  assert.match(html, /savedTheme === "light" \? "light" : "dark"/);
+  assert.match(html, /const THEME_KEY = "koubo-review-theme"/);
+  assert.match(html, /const THEMES = \[DARK_THEME, LIGHT_THEME\]/);
+  assert.match(html, /function validTheme\(value\)/);
+  assert.match(html, /document\.documentElement\.dataset\.theme = theme/);
+  assert.match(html, /localStorage\.setItem\(THEME_KEY, theme\)/);
+  assert.match(html, /id="themeToggle"/);
+  assert.match(html, /:root\[data-theme="light"\]/);
+  assert.match(html, /--wave-bg/);
+});
