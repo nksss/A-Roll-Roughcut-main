@@ -19,7 +19,7 @@
 把这个仓库地址发给你的 coding agent，说一句「装一下」：
 
 ```text
-https://github.com/nextcaicai/A-Roll-Roughcut
+https://github.com/nksss/A-Roll-Roughcut-main
 ```
 
 Agent 会读这份 README，装好 ffmpeg 和 Python 环境，再跑一遍检查。
