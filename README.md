@@ -99,9 +99,12 @@ koubo-roughcut/.venv/bin/python koubo-roughcut/scripts/setup_check.py
 - Linux：在仓库根目录运行 `bash koubo-roughcut/scripts/start_review_linux.sh`
 - macOS：双击 `koubo-roughcut/scripts/start_review_mac.command`；若系统未授予执行权限，先在终端运行 `chmod +x koubo-roughcut/scripts/start_review_mac.command`
 
-路径可输入相对于仓库根目录的位置或绝对路径。例如上轮「推荐口播」项目可输入 `koubo-roughcut/workspace/推荐口播`。日期格式的 run 目录建议使用 `YYYY-MM-DD`，以保证按名称排序时最新日期排在前面。脚本依赖已安装好的 `koubo-roughcut/.venv`。审片服务运行期间不要关闭脚本打开的终端窗口；结束审片时在窗口按 `Ctrl+C`。
+路径可输入相对于仓库根目录的位置或绝对路径。例如上轮「如何学习AI？」项目可输入 `koubo-roughcut/workspace/如何学习AI？`。日期格式的 run 目录建议使用 `YYYY-MM-DD`，以保证按名称排序时最新日期排在前面。脚本依赖已安装好的 `koubo-roughcut/.venv`。审片服务运行期间不要关闭脚本打开的终端窗口；结束审片时在窗口按 `Ctrl+C`。
 
 服务会尝试从所选 run 的决策文件自动定位源片。
+
+### 学偏好（用户触发）
+用户说「学一下」时再做。先汇总审片差异，再抽象成规则，记录用户偏好。
 
 ## 数据会送到哪里
 
