@@ -19,7 +19,7 @@
 
 ```bash
 $PY $SCRIPTS/validate_script_coverage.py \
-  --script <成片名>/脚本.md \
+  --script koubo-roughcut/workspace/<成片名>/脚本.md \
   --transcript $OUT/transcript.json \
   --decisions $OUT/cut_decisions.json \
   --output $OUT/script_coverage.md

@@ -81,7 +81,7 @@ koubo-roughcut/.venv/bin/python koubo-roughcut/scripts/setup_check.py
 
 ## 剪一条口播
 
-1. 在仓库里建一个成片目录，用你认得出的题目命名，例如 `如何学习AI？/`。
+1. 在 `koubo-roughcut/workspace/` 下建一个成片目录，用你认得出的题目命名，例如 `koubo-roughcut/workspace/如何学习AI？/`。
 2. 把源视频放进去，文件名保持原样。
 3. 在同一目录写 `脚本.md`。
 4. 对 Agent 说：按口播粗剪，给「如何学习AI？」做第一轮粗剪。
@@ -89,7 +89,19 @@ koubo-roughcut/.venv/bin/python koubo-roughcut/scripts/setup_check.py
 
 暂时没有口播稿也可以开工。Agent 会按口播本身去掉重复，并说明这次没有对过稿。
 
-每次粗剪的结果在 `<成片名>/runs/<日期>/`。这个目录可以删，用源片、`脚本.md` 和 skill 能重做。
+每次粗剪的结果在 `koubo-roughcut/workspace/<成片名>/runs/<日期>/`。这个目录可以删，用源片、`脚本.md` 和 skill 能重做。
+
+### 重新打开已有审片
+
+用对应平台的启动脚本重新打开已有审片。启动时输入项目目录路径（目录下需有 `runs/`），脚本会按 run 目录名倒序选择最新一次，并在浏览器打开 `http://127.0.0.1:8765/`：
+
+- Windows：双击 `koubo-roughcut/scripts/start_review_windows.bat`
+- Linux：在仓库根目录运行 `bash koubo-roughcut/scripts/start_review_linux.sh`
+- macOS：双击 `koubo-roughcut/scripts/start_review_mac.command`；若系统未授予执行权限，先在终端运行 `chmod +x koubo-roughcut/scripts/start_review_mac.command`
+
+路径可输入相对于仓库根目录的位置或绝对路径。例如上轮「推荐口播」项目可输入 `koubo-roughcut/workspace/推荐口播`。日期格式的 run 目录建议使用 `YYYY-MM-DD`，以保证按名称排序时最新日期排在前面。脚本依赖已安装好的 `koubo-roughcut/.venv`。审片服务运行期间不要关闭脚本打开的终端窗口；结束审片时在窗口按 `Ctrl+C`。
+
+服务会尝试从所选 run 的决策文件自动定位源片。
 
 ## 数据会送到哪里
 
@@ -110,9 +122,9 @@ koubo-roughcut/.venv/bin/python koubo-roughcut/scripts/setup_check.py
 |---|---|
 | `koubo-roughcut/` | 粗剪 skill |
 | `koubo-roughcut/scripts/` | 转写、校验、审片、导出 |
-| `<成片名>/脚本.md` | 口播稿 |
-| `<成片名>/` 里的源视频 | 原文件，不改名 |
-| `<成片名>/runs/<日期>/` | 这一次粗剪的产出 |
+| `koubo-roughcut/workspace/<成片名>/脚本.md` | 口播稿 |
+| `koubo-roughcut/workspace/<成片名>/` 里的源视频 | 原文件，不改名 |
+| `koubo-roughcut/workspace/<成片名>/runs/<日期>/` | 这一次粗剪的产出 |
 
 ## 文档以哪份为准
 

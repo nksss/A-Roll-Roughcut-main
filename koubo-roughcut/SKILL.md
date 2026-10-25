@@ -18,11 +18,11 @@ version: 0.12.7
 
 ## 输入
 
-开工前三样都有着落再转写：
+开工前三样都有着落再转写。每条成片统一放在仓库内的 `koubo-roughcut/workspace/<成片名>/`：
 
 1. 源视频路径
 2. `脚本.md`（没有就说一声，按口播自身去重，不假装对过稿）
-3. 输出目录：`<成片名>/runs/<日期>/`
+3. 项目目录：`koubo-roughcut/workspace/<成片名>/`；本次输出目录：`koubo-roughcut/workspace/<成片名>/runs/<日期>/`
 
 片内目录约定见仓库根目录 `README.md`。
 
@@ -57,7 +57,7 @@ koubo-roughcut/.venv/bin/python koubo-roughcut/scripts/setup_check.py
 
 ## 步骤
 
-`PY=koubo-roughcut/.venv/bin/python`，`SCRIPTS=koubo-roughcut/scripts`，`OUT=<成片名>/runs/<日期>`，`TR=$OUT/transcript.corrected.json`。
+`PY=koubo-roughcut/.venv/bin/python`，`SCRIPTS=koubo-roughcut/scripts`，`PROJECT=koubo-roughcut/workspace/<成片名>`，`OUT=$PROJECT/runs/<日期>`，`TR=$OUT/transcript.corrected.json`。
 
 | 步 | 谁做 | 产出 |
 |---|---|---|
@@ -79,10 +79,10 @@ koubo-roughcut/.venv/bin/python koubo-roughcut/scripts/setup_check.py
 用户明确要换模型时，才用豆包录音文件识别 2.0（`volc.seedasr.auc`）。这是可选项，不是失败后的替补。key：`DOUBAO_SPEECH_API_KEY`。音频必须是豆包服务能下载的 wav / mp3 / ogg，用 `--audio-url`。这一路关掉语义顺滑，重复和语气词留给后面的删词。没有地址或没有 key，同样停下来说明。
 
 ```bash
-$PY $SCRIPTS/transcribe.py <源视频> --output $OUT --script <成片名>/脚本.md
+$PY $SCRIPTS/transcribe.py <源视频> --output $OUT --script $PROJECT/脚本.md
 
 # 用户指定豆包时才加这两项
-$PY $SCRIPTS/transcribe.py <源视频> --output $OUT --script <成片名>/脚本.md \
+$PY $SCRIPTS/transcribe.py <源视频> --output $OUT --script $PROJECT/脚本.md \
   --engine doubao --audio-url <豆包能下载的音频地址>
 ```
 
