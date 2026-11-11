@@ -9,6 +9,7 @@ Prepare a source video and, if available, its script. Open this repository in Cu
 - Remove failed starts and repeated takes while preserving natural pauses
 - Listen to the edited result in the browser and restore or remove words
 - Export SRT subtitles aligned to the edited timeline and a fixed-frame-rate MP4
+- Use an available GPU video encoder for MP4 export, with automatic CPU fallback
 
 This workflow ends at the approved rough cut. B-roll, sound effects, and Jianying/CapCut project files are out of scope.
 

@@ -1,11 +1,92 @@
 """Constant-frame-rate rough cut uses the same grid as the XML. No ffmpeg."""
 
+import io
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 import render_roughcut
 
 
 class ConstantRate(unittest.TestCase):
+    def test_hardware_encoder_detection_reads_ffmpeg_encoder_list(self):
+        result = type(
+            "Result",
+            (),
+            {
+                "stdout": (
+                    " V....D h264_nvenc NVIDIA NVENC H.264\n"
+                    " V..... libx264 software H.264\n"
+                    " V....D hevc_amf AMD AMF HEVC\n"
+                )
+            },
+        )()
+        with patch.object(render_roughcut.subprocess, "run", return_value=result):
+            self.assertEqual(render_roughcut.available_h264_encoders(), {"h264_nvenc"})
+        self.assertEqual(
+            render_roughcut.encoder_attempt_order({"h264_nvenc", "h264_qsv"}),
+            ["h264_nvenc", "h264_qsv", None],
+        )
+        self.assertEqual(render_roughcut.encoder_attempt_order(set()), [None])
+
+    def test_video_encoder_arguments_preserve_cpu_fallback(self):
+        self.assertEqual(
+            render_roughcut.video_encoder_args("h264_nvenc"),
+            ["-c:v", "h264_nvenc", "-preset", "p4", "-rc", "vbr", "-cq", "18", "-b:v", "0"],
+        )
+        self.assertEqual(
+            render_roughcut.video_encoder_args(None),
+            ["-c:v", "libx264", "-preset", "fast", "-crf", "18"],
+        )
+        vaapi = next(item for item in render_roughcut.GPU_ENCODERS if item[0] == "h264_vaapi")
+        self.assertEqual(vaapi[2], ["-vaapi_device", "/dev/dri/renderD128"])
+        self.assertEqual(vaapi[3], ["-vf", "format=nv12,hwupload"])
+
+    def test_failed_hardware_encode_retries_with_software_encoder(self):
+        class FakeProcess:
+            def __init__(self, code, stderr):
+                self.stdout = io.StringIO("out_time=00:00:00.040000\nprogress=continue\n")
+                self.stderr = io.StringIO(stderr)
+                self.code = code
+
+            def poll(self):
+                return self.code
+
+            def wait(self):
+                return self.code
+
+            def kill(self):
+                self.code = -9
+
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "source.mp4"
+            source.touch()
+            output = Path(tmp) / "roughcut.mp4"
+            calls = []
+
+            def fake_popen(cmd, **_kwargs):
+                calls.append(cmd)
+                if len(calls) == 1:
+                    return FakeProcess(1, "Cannot load GPU driver")
+                return FakeProcess(0, "")
+
+            with (
+                patch.object(render_roughcut, "probe", return_value={"fps_n": 25, "fps_d": 1, "has_audio": False}),
+                patch.object(render_roughcut, "filter_graph", return_value="[0:v]null[outv]"),
+                patch.object(render_roughcut, "available_h264_encoders", return_value={"h264_nvenc"}),
+                patch.object(render_roughcut.subprocess, "Popen", side_effect=fake_popen),
+            ):
+                render_roughcut.render_mp4(
+                    source,
+                    {"keep": [{"sourceStart": 0, "sourceEnd": 1}]},
+                    output,
+                )
+
+            self.assertEqual(len(calls), 2)
+            self.assertEqual(calls[0][calls[0].index("-c:v") + 1], "h264_nvenc")
+            self.assertEqual(calls[1][calls[1].index("-c:v") + 1], "libx264")
+
     def test_loudness_target_is_validated_and_added_to_audio_graph(self):
         graph = render_roughcut.filter_graph([(0.0, 1.0, 25)], 25, True, target_lufs=-14)
         self.assertIn("loudnorm=I=-14.000:TP=-2:LRA=11", graph)

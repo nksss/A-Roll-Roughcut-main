@@ -6,7 +6,9 @@ import argparse
 import json
 import math
 import os
+import re
 import subprocess
+import sys
 import tempfile
 import threading
 from collections.abc import Callable
@@ -18,6 +20,18 @@ from export_fcpxml import probe, to_frames
 DEFAULT_TARGET_LUFS = -5.0
 MIN_TARGET_LUFS = -70.0
 MAX_TARGET_LUFS = -1.0
+GPU_ENCODERS = (
+    ("h264_nvenc", ["-preset", "p4", "-rc", "vbr", "-cq", "18", "-b:v", "0"], [], None),
+    ("h264_qsv", ["-preset", "medium", "-global_quality", "18"], [], None),
+    ("h264_amf", ["-quality", "quality", "-rc", "cqp", "-qp_i", "18", "-qp_p", "20"], [], None),
+    ("h264_videotoolbox", ["-q:v", "65"], [], None),
+    (
+        "h264_vaapi",
+        ["-qp", "22"],
+        ["-vaapi_device", "/dev/dri/renderD128"],
+        ["-vf", "format=nv12,hwupload"],
+    ),
+)
 
 
 def normalize_target_lufs(value: object = DEFAULT_TARGET_LUFS) -> float:
@@ -139,6 +153,41 @@ def progress_snapshot(out_time: float, speed: float | None, total: float, done: 
     return {"fraction": fraction, "remaining": remaining}
 
 
+def available_h264_encoders() -> set[str]:
+    """Return H.264 hardware encoders exposed by the installed ffmpeg."""
+    try:
+        result = subprocess.run(
+            ["ffmpeg", "-hide_banner", "-encoders"],
+            capture_output=True,
+            check=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except (OSError, subprocess.CalledProcessError):
+        return set()
+    return {
+        encoder
+        for encoder, _, _, _ in GPU_ENCODERS
+        if (encoder != "h264_videotoolbox" or sys.platform == "darwin")
+        and (encoder != "h264_vaapi" or (os.name != "nt" and Path("/dev/dri/renderD128").exists()))
+        if re.search(rf"^\s*V\S*\s+{re.escape(encoder)}(?:\s|$)", result.stdout, re.MULTILINE)
+    }
+
+
+def encoder_attempt_order(available: set[str]) -> list[str | None]:
+    return [encoder for encoder, _, _, _ in GPU_ENCODERS if encoder in available] + [None]
+
+
+def video_encoder_args(hardware_encoder: str | None) -> list[str]:
+    if hardware_encoder is None:
+        return ["-c:v", "libx264", "-preset", "fast", "-crf", "18"]
+    for encoder, options, _, _ in GPU_ENCODERS:
+        if encoder == hardware_encoder:
+            return ["-c:v", encoder, *options]
+    raise ValueError(f"不支持的硬件视频编码器：{hardware_encoder}")
+
+
 def render_mp4(
     source: Path,
     decisions: dict,
@@ -165,93 +214,107 @@ def render_mp4(
     with tempfile.NamedTemporaryFile("w", suffix=".ffmpeg", delete=False, encoding="utf-8") as tmp:
         tmp.write(graph)
         filter_path = tmp.name
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-i",
-        str(source),
-        "-filter_complex_script",
-        filter_path,
-        "-map",
-        "[outv]",
-    ]
-    if media["has_audio"]:
-        cmd.extend(["-map", "[outa]"])
-    cmd.extend(
-        [
-            "-c:v",
-            "libx264",
-            "-preset",
-            "fast",
-            "-crf",
-            "18",
-            "-r",
-            str(fps),
-            "-movflags",
-            "+faststart",
-            "-nostats",
-            "-stats_period",
-            "0.5",
-            "-progress",
-            "pipe:1",
-        ]
-    )
-    if media["has_audio"]:
-        cmd.extend(["-c:a", "aac", "-b:a", "192k"])
-    cmd.append(str(output))
-    proc: subprocess.Popen[str] | None = None
-    code = 1
-    stderr = ""
+    hardware_encoders = available_h264_encoders()
+    encoders_to_try = encoder_attempt_order(hardware_encoders)
     try:
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        stderr_parts: list[str] = []
+        for attempt, encoder in enumerate(encoders_to_try):
+            config = next((item for item in GPU_ENCODERS if item[0] == encoder), None)
+            cmd = [
+                "ffmpeg",
+                "-y",
+                *(config[2] if config else []),
+                "-i",
+                str(source),
+                "-filter_complex_script",
+                filter_path,
+                "-map",
+                "[outv]",
+            ]
+            if media["has_audio"]:
+                cmd.extend(["-map", "[outa]"])
+            if config and config[3]:
+                cmd.extend(config[3])
+            cmd.extend(video_encoder_args(encoder))
+            cmd.extend(
+                [
+                    "-r",
+                    str(fps),
+                    "-movflags",
+                    "+faststart",
+                    "-nostats",
+                    "-stats_period",
+                    "0.5",
+                    "-progress",
+                    "pipe:1",
+                ]
+            )
+            if media["has_audio"]:
+                cmd.extend(["-c:a", "aac", "-b:a", "192k"])
+            cmd.append(str(output))
+            proc: subprocess.Popen[str] | None = None
+            stderr_parts: list[str] = []
+            try:
+                proc = subprocess.Popen(
+                    cmd,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    encoding="utf-8",
+                    errors="replace",
+                )
 
-        def _drain() -> None:
-            assert proc is not None and proc.stderr is not None
-            stderr_parts.append(proc.stderr.read())
+                def _drain() -> None:
+                    assert proc is not None and proc.stderr is not None
+                    stderr_parts.append(proc.stderr.read())
 
-        drain = threading.Thread(target=_drain, daemon=True)
-        drain.start()
-        out_time = 0.0
-        speed: float | None = None
-        emitted = 0.0
-        assert proc.stdout is not None
-        for raw in proc.stdout:
-            key, _, value = raw.strip().partition("=")
-            if key == "out_time":
-                out_time = parse_clock(value)
-            elif key == "speed":
-                speed = parse_speed(value)
-            elif key == "progress" and on_progress is not None:
-                done = value == "end"
-                snap = progress_snapshot(out_time, speed, total, done)
-                fraction = snap["fraction"]
-                if not done and fraction < emitted:
-                    continue
-                emitted = fraction
-                on_progress(fraction, snap["remaining"])
-        drain.join()
-        code = proc.wait()
-        stderr = stderr_parts[0] if stderr_parts else ""
+                drain = threading.Thread(target=_drain, daemon=True)
+                drain.start()
+                out_time = 0.0
+                speed: float | None = None
+                emitted = 0.0
+                assert proc.stdout is not None
+                for raw in proc.stdout:
+                    key, _, value = raw.strip().partition("=")
+                    if key == "out_time":
+                        out_time = parse_clock(value)
+                    elif key == "speed":
+                        speed = parse_speed(value)
+                    elif key == "progress" and on_progress is not None:
+                        done = value == "end"
+                        snap = progress_snapshot(out_time, speed, total, done)
+                        fraction = snap["fraction"]
+                        if not done and fraction < emitted:
+                            continue
+                        emitted = fraction
+                        on_progress(fraction, snap["remaining"])
+                drain.join()
+                code = proc.wait()
+            except OSError as exc:
+                code = 1
+                stderr_parts.append(str(exc))
+            finally:
+                if proc is not None and proc.poll() is None:
+                    proc.kill()
+                    proc.wait()
+
+            stderr = stderr_parts[0] if stderr_parts else ""
+            if code == 0:
+                return
+            detail = stderr.strip().splitlines()
+            tail = " ".join(detail[-3:]) if detail else "ffmpeg 失败"
+            try:
+                output.unlink()
+            except OSError:
+                pass
+            if encoder is None:
+                raise ValueError(tail)
+            if attempt + 1 < len(encoders_to_try) and on_progress is not None:
+                on_progress(0.0, None)
     finally:
-        if proc is not None and proc.poll() is None:
-            proc.kill()
-            proc.wait()
         try:
             os.unlink(filter_path)
         except OSError:
             pass
-    if code != 0:
-        detail = stderr.strip().splitlines()
-        tail = " ".join(detail[-3:]) if detail else "ffmpeg 失败"
-        raise ValueError(tail)
 
 
 def main() -> int:
