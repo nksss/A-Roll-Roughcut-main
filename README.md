@@ -1,5 +1,8 @@
 # 口播粗剪
 
+<img width="2511" height="1278" alt="dashBoard" src="https://github.com/user-attachments/assets/dd08393a-3e86-4efa-bd24-fec654ed3e41" />
+
+
 把口播里的重说和卡顿剪掉，留下句间该留的气口，再由人听一遍定稿。定稿后可以导出按剪后时间对齐的字幕，以及一条给剪映用的成片。
 
 你准备源视频和口播稿。在 Cursor、Claude Code 或 Codex 里打开这个仓库，Agent 按 [koubo-roughcut/SKILL.md](koubo-roughcut/SKILL.md) 做转写、对照和取舍。切口写在 `cut_decisions.json` 里，人在浏览器里改。

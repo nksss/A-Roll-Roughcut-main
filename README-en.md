@@ -1,5 +1,8 @@
 # A-Roll Rough Cut
 
+<img width="2511" height="1278" alt="dashBoard" src="https://github.com/user-attachments/assets/38fa61fc-24b1-4e1f-aa9f-b3bcbd79dfda" />
+
+
 Remove false starts and stumbles from talking-head footage while preserving natural pauses between sentences. Review the cuts in a browser, then export subtitles aligned to the edited timeline or a fixed-frame-rate video for Jianying/CapCut.
 
 Prepare a source video and, if available, its script. Open this repository in Cursor, Claude Code, or Codex. The agent follows [koubo-roughcut/SKILL.md](koubo-roughcut/SKILL.md) to transcribe, compare, and make conservative cut decisions. Decisions are stored in `cut_decisions.json` and can be edited in the browser review panel.
