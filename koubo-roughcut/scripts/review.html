@@ -118,6 +118,8 @@
     .pbody { line-height: 1.95; font-size: 15px; }
     .w { cursor: pointer; border-radius: 3px; }
     .w:hover { background: var(--word-hover-bg); }
+    .w.editing { cursor: text; outline: 1px solid var(--accent); background: var(--input-bg); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18); }
+    .w.editing:focus { outline-width: 2px; }
     .w.drop { color: var(--struck-text); text-decoration: line-through; text-decoration-color: var(--drop); text-decoration-thickness: 1.5px; }
     .w.cur { background: var(--button-pressed-bg); color: var(--accent); }
     .w.sel { background: var(--sel); color: var(--selection-text); }
@@ -195,6 +197,7 @@
       <div class="tx-pane" id="txPane">
         <div class="tx-hint" id="txHint">
           <span><kbd>单击</kbd> 字词去听</span>
+          <span><kbd>双击</kbd> 修改字幕</span>
           <span><kbd>框选</kbd> 松手自动删 / 恢复</span>
           <span><kbd>Space</kbd> 播放</span>
         </div>
@@ -438,12 +441,12 @@
         const body = document.createElement("div");
         body.className = "pbody";
         const ws = seg.words && seg.words.length ? seg.words : [{ word: seg.text, start: seg.start, end: seg.end }];
-        ws.forEach((w) => {
+        ws.forEach((w, wi) => {
           const el = document.createElement("span");
           el.className = "w";
           el.textContent = w.word;
           el.dataset.i = words.length;
-          words.push({ w: w.word, s: w.start, e: w.end, seg: si, el });
+          words.push({ w: w.word, s: w.start, e: w.end, seg: si, word: wi, el });
           body.appendChild(el);
         });
         p.appendChild(body);
@@ -1491,8 +1494,77 @@
     /* ---------- events ---------- */
 
     const txBox = $("transcript");
+    let editingWord = null;
+
+    function selectEditableText(el) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
+
+    function cancelWordEdit() {
+      if (!editingWord) return;
+      const { rec, original } = editingWord;
+      editingWord = null;
+      rec.el.contentEditable = "false";
+      rec.el.classList.remove("editing");
+      rec.el.textContent = original;
+    }
+
+    async function finishWordEdit(commit) {
+      if (!editingWord) return;
+      const { rec, original } = editingWord;
+      editingWord = null;
+      rec.el.contentEditable = "false";
+      rec.el.classList.remove("editing");
+      const text = rec.el.textContent.trim();
+      if (!commit || text === original) {
+        rec.el.textContent = original;
+        return;
+      }
+      if (!text) {
+        rec.el.textContent = original;
+        setStatus("字幕文字不能为空", "err");
+        return;
+      }
+      rec.el.textContent = text;
+      rec.el.classList.add("editing");
+      try {
+        const res = await fetch("/api/transcript", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ segment: rec.seg, word: rec.word, text }),
+        });
+        const body = await res.json();
+        if (!res.ok || !body.ok) throw new Error(body.error || "更新字幕失败");
+        rec.w = text;
+        state.transcript = body.transcript;
+        setStatus("字幕文字已更新", "ok");
+      } catch (err) {
+        rec.el.textContent = original;
+        setStatus(err?.message || "更新字幕失败", "err");
+      } finally {
+        rec.el.classList.remove("editing");
+      }
+    }
+
+    function beginWordEdit(rec) {
+      if (!rec || editingWord) return;
+      clearSelection();
+      editingWord = { rec, original: rec.w };
+      rec.el.contentEditable = "true";
+      rec.el.classList.add("editing");
+      rec.el.setAttribute("role", "textbox");
+      rec.el.setAttribute("aria-multiline", "false");
+      rec.el.setAttribute("aria-label", "编辑字幕文字。按回车确认，按 Escape 取消");
+      rec.el.focus();
+      selectEditableText(rec.el);
+    }
 
     function endSelect() {
+      if (editingWord) return;
       if (!selecting) return;
       selecting = false;
       txBox.classList.remove("selecting");
@@ -1525,6 +1597,7 @@
     }
 
     txBox.addEventListener("mousedown", (ev) => {
+      if (editingWord) return;
       if (ev.button !== 0 || !state?.hasDecisions) return;
       if (ev.target.closest(".ptime")) return;
       if (selectedGap) {
@@ -1559,6 +1632,26 @@
       if (el) hoverWord = Number(el.dataset.i);
     });
     txBox.addEventListener("mouseleave", () => { hoverWord = -1; });
+    txBox.addEventListener("dblclick", (ev) => {
+      const el = ev.target.closest(".w");
+      if (!el) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      beginWordEdit(words[Number(el.dataset.i)]);
+    });
+    txBox.addEventListener("keydown", (ev) => {
+      if (!editingWord || ev.target !== editingWord.rec.el) return;
+      if (ev.key === "Enter") {
+        ev.preventDefault();
+        editingWord.rec.el.blur();
+      } else if (ev.key === "Escape") {
+        ev.preventDefault();
+        cancelWordEdit();
+      }
+    });
+    txBox.addEventListener("blur", (ev) => {
+      if (editingWord && ev.target === editingWord.rec.el) finishWordEdit(true);
+    }, true);
     document.addEventListener("mousedown", (ev) => {
       if (ev.target.closest("#transcript")) return;
       clearSelection();
@@ -1712,7 +1805,7 @@
     $("exportMp4").onclick = () => exportFile("mp4");
 
     window.addEventListener("keydown", (ev) => {
-      if (ev.target.matches("input, textarea, select")) return;
+      if (ev.target.matches("input, textarea, select, [contenteditable=\"true\"]")) return;
       if (ev.code === "Space") {
         ev.preventDefault();
         if (!media) return;

@@ -334,6 +334,39 @@ def transcript_file(run_dir: Path) -> Path:
     return run_dir / "transcript.json"
 
 
+def update_transcript_word(run_dir: Path, segment_index: int, word_index: int, text: str) -> dict:
+    """Update one displayed transcript word without changing its timings."""
+    if isinstance(segment_index, bool) or isinstance(word_index, bool):
+        raise ValueError("invalid transcript position")
+    if not isinstance(segment_index, int) or not isinstance(word_index, int):
+        raise ValueError("invalid transcript position")
+    if not isinstance(text, str):
+        raise ValueError("字幕文字必须是文本")
+    value = text.strip()
+    if not value:
+        raise ValueError("字幕文字不能为空")
+    path = transcript_file(run_dir)
+    if not path.is_file():
+        raise ValueError("找不到转写稿")
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    segments = raw.get("segments") or []
+    if segment_index < 0 or segment_index >= len(segments):
+        raise ValueError("invalid transcript position")
+    segment = segments[segment_index]
+    words = segment.get("words") or []
+    if words:
+        if word_index < 0 or word_index >= len(words):
+            raise ValueError("invalid transcript position")
+        words[word_index]["word"] = value
+        segment["text"] = "".join(str(word.get("word") or "") for word in words)
+    elif word_index == 0:
+        segment["text"] = value
+    else:
+        raise ValueError("invalid transcript position")
+    path.write_text(json.dumps(raw, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return compact_transcript(raw)
+
+
 def build_state(run_dir: Path, source: Path | None, audio: Path | None) -> dict:
     decisions_path = run_dir / "cut_decisions.json"
     transcript_path = transcript_file(run_dir)
@@ -553,6 +586,22 @@ class ReviewHandler(BaseHTTPRequestHandler):
 
     def do_PUT(self) -> None:  # noqa: N802
         path = urlparse(self.path).path
+        if path == "/api/transcript":
+            data = self._read_json()
+            if data is None:
+                return
+            try:
+                transcript = update_transcript_word(
+                    self.run_dir,
+                    data.get("segment"),
+                    data.get("word"),
+                    data.get("text"),
+                )
+            except (OSError, ValueError, json.JSONDecodeError, KeyError, TypeError) as exc:
+                self._json(400, {"ok": False, "error": str(exc)})
+                return
+            self._json(200, {"ok": True, "transcript": transcript})
+            return
         if path != "/api/decisions":
             self.send_error(404, "not found")
             return

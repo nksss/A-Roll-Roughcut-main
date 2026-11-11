@@ -229,3 +229,12 @@ test("review panel declares validated persisted light and dark theme choices", (
   assert.match(html, /:root\[data-theme="light"\]/);
   assert.match(html, /--wave-bg/);
 });
+
+test("review panel supports double-click subtitle text editing", () => {
+  const html = fs.readFileSync(path.join(__dirname, "review.html"), "utf8");
+  assert.match(html, /双击<\/kbd> 修改字幕/);
+  assert.match(html, /txBox\.addEventListener\("dblclick"/);
+  assert.match(html, /contentEditable = "true"/);
+  assert.match(html, /fetch\("\/api\/transcript"/);
+  assert.match(html, /按回车确认，按 Escape 取消/);
+});

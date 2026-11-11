@@ -99,5 +99,45 @@ class HeardFlags(unittest.TestCase):
         self.assertEqual([f["id"] for f in log["flags"]["unheard"]], ["f002"])
 
 
+class TranscriptEditing(unittest.TestCase):
+    def test_editing_a_word_keeps_its_timing_and_updates_segment_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            transcript = {
+                "segments": [
+                    {
+                        "start": 1.0,
+                        "end": 2.0,
+                        "text": "我说",
+                        "words": [
+                            {"word": "我", "start": 1.0, "end": 1.5},
+                            {"word": "说", "start": 1.5, "end": 2.0},
+                        ],
+                    }
+                ]
+            }
+            path = run / "transcript.corrected.json"
+            path.write_text(json.dumps(transcript, ensure_ascii=False), encoding="utf-8")
+
+            updated = review_server.update_transcript_word(run, 0, 1, "想说")
+
+            stored = json.loads(path.read_text(encoding="utf-8"))
+            self.assertEqual(stored["segments"][0]["words"][1], {"word": "想说", "start": 1.5, "end": 2.0})
+            self.assertEqual(stored["segments"][0]["text"], "我想说")
+            self.assertEqual(updated["segments"][0]["words"][1]["word"], "想说")
+
+    def test_editing_rejects_blank_subtitle_text(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            run = Path(tmp)
+            (run / "transcript.json").write_text(
+                json.dumps({"segments": [{"text": "原文", "words": [{"word": "原文", "start": 0, "end": 1}]}]}, ensure_ascii=False),
+                encoding="utf-8",
+            )
+            with self.assertRaisesRegex(ValueError, "字幕文字不能为空"):
+                review_server.update_transcript_word(run, 0, 0, "   ")
+            with self.assertRaisesRegex(ValueError, "字幕文字必须是文本"):
+                review_server.update_transcript_word(run, 0, 0, {"text": "错误类型"})
+
+
 if __name__ == "__main__":
     unittest.main()
